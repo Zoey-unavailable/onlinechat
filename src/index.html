@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Chatroom</title>
+  <style>
+    #login-form, #chatroom {
+      display: none;
+      width: 400px;
+      margin: 20px auto;
+    }
+    #chatroom {
+      display: none;
+    }
+    #chat-container {
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: scroll;
+      height: 200px;
+    }
+  </style>
+</head>
+<body>
+<div id="login-form">
+  <h2>Login</h2>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<div id="chatroom">
+  <h2>Welcome to Chatroom</h2>
+  <div id="chat-container"></div>
+  <input type="text" id="message-input" placeholder="Type your message...">
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  const loginForm = document.getElementById('login-form');
+  const chatroom = document.getElementById('chatroom');
+  const chatContainer = document.getElementById('chat-container');
+  const messageInput = document.getElementById('message-input');
+  let username = '';
+
+  // 创建 WebSocket 连接
+  const socket = new WebSocket('ws://localhost:3000'); // 替换为你的服务器地址
+
+  // 登录
+  function login() {
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const credentials = {
+      username: usernameInput.value.trim(),
+      password: passwordInput.value.trim()
+    };
+    if (credentials.username && credentials.password) {
+      // 向服务器发送登录信息
+      socket.send(JSON.stringify(credentials));
+    }
+  }
+
+  // 当连接建立时触发
+  socket.addEventListener('open', function (event) {
+    console.log('Connected to WebSocket server');
+  });
+
+  // 当接收到来自服务器的消息时触发
+  socket.addEventListener('message', function (event) {
+    const message = JSON.parse(event.data);
+    if (message.type === 'login') {
+      if (message.success) {
+        username = message.username;
+        loginForm.style.display = 'none';
+        chatroom.style.display = 'block';
+      } else {
+        alert('Login failed');
+      }
+    } else if (message.type === 'chat') {
+      appendMessage(message.sender + ': ' + message.content);
+    }
+  });
+
+  // 发送消息
+  function sendMessage() {
+    const messageContent = messageInput.value.trim();
+    if (messageContent) {
+      const message = {
+        type: 'chat',
+        sender: username,
+        content: messageContent
+      };
+      socket.send(JSON.stringify(message));
+      appendMessage('Me: ' + messageContent);
+      messageInput.value = '';
+    }
+  }
+
+  // 在聊天容器中追加消息
+  function appendMessage(message) {
+    const messageElement = document.createElement('div');
+    messageElement.textContent = message;
+    chatContainer.appendChild(messageElement);
+    chatContainer.scrollTop = chatContainer.scrollHeight; // 自动滚动到最底部
+  }
+</script>
+</body>
+</html>
